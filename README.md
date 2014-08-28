@@ -1,9 +1,9 @@
 # RackSimpleAppReverseProxy
 
-This is a simple reverse proxy that fetches an html page from remote resource and splits it. Two environment variables are created:
+This is a simple reverse proxy that fetches an html page from remote resource and splits it in terms of header and body. Two environment variables are created:
 
-* app_proxy.head - contains inner part of <head>...</head>
-* app_proxy.body - similiary it's of the <body>...</body>
+* app_proxy.head - contains inner part of `<head>`...`</head>`
+* app_proxy.body - similiary it's of the `<body>`...`</body>`
 
 This is useful for embedding a foreign app into our own. In production, you can see as it serves merging phpBB forum with the Rails application [right here](http://www.cestadreva.cz/diskuze/).
 
@@ -23,7 +23,7 @@ Or install it yourself as:
 
 ## Usage
 
-When used in Rails environment include it as middleware. Add to `application.rb` following:
+When used in Rails environment, include it as middleware. Add to your `application.rb` the following:
 
     config.middleware.use "Rack::SimpleAppReverseProxy",
                           :uri => "http://remote.host.name/remote/path",
@@ -33,11 +33,11 @@ The `expand_paths` options is an array of relative paths that should be expanded
 
     ./styles/x/y/z  ->  http://remote.host.name/remote/path/styles/x/y/z
 
-Next you need to enhance your layout by including header part. In the layout, in <head>...</head> content you will want to add:
+Next, you need to enhance your layout by including header part. In the layout in `<head>`...`</head>` section you will want to add:
 
     <%= request.env["app_proxy.head"] %>
 
-And into the view that renders remote app's body you add simply: 
+And into the view that renders remote app's body you simply add: 
 
     <%= request.env["app_proxy.body"] %>
 
