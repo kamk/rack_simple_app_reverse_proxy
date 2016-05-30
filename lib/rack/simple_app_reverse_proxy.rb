@@ -54,6 +54,7 @@ module Rack
           header.search("title").remove
           env["app_proxy.head"] = expand_rel_paths(header.inner_html)
           env["app_proxy.body"] = expand_rel_paths((doc / 'body').inner_html)
+          env["app_proxy.cookies"] = result["set-cookie"]
         else
           res_headers = { "Content-Type" => result["content-type"] }
           res_headers["Set-Cookie"] = result["Set-Cookie"] if result["set-cookie"]
