@@ -52,8 +52,10 @@ module Rack
           doc = Nokogiri::HTML(result.body)
           header = doc / 'head'
           header.search("title").remove
-          env["app_proxy.head"] = expand_rel_paths(header.inner_html)
-          env["app_proxy.body"] = expand_rel_paths((doc / 'body').inner_html)
+          uri = @remote_uri
+          uri.scheme = env['rack.url_scheme']
+          env["app_proxy.head"] = expand_rel_paths(header.inner_html, uri)
+          env["app_proxy.body"] = expand_rel_paths((doc / 'body').inner_html, uri)
           env["app_proxy.cookies"] = result["set-cookie"]
         else
           res_headers = { "Content-Type" => result["content-type"] }
@@ -66,9 +68,9 @@ module Rack
   
   
     private
-    def expand_rel_paths(data)
+    def expand_rel_paths(data, uri)
       @expand_paths.each do |p|
-        data.gsub!("./#{p}", "#{@remote_uri}/#{p}")
+        data.gsub!("./#{p}", "#{uri}/#{p}")
       end
       return data
     end
