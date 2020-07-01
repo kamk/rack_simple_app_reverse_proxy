@@ -17,16 +17,24 @@ module Rack
       if env["PATH_INFO"] =~ %r{^#{@remote_uri.path}}
         result = nil
         Net::HTTP.start(@remote_uri.host) do |http|
-          req_headers = Rack::Utils::HeaderHash.new
+          req_headers = Hash.new
           env.each do |h, v|
-            next if h == "HTTP_HOST"
-            next unless h =~ /^HTTP_/
-            req_headers[h.sub(/^HTTP_/, "")] = v
+            if h =~ /^HTTP_([A-Z_]+)/
+              next if %w(HOST VERSION ACCEPT_ENCODING).include?($1)
+              words = $1.split('_').map do |w|
+                        w.downcase!
+                        w[0] = (w[0].ord - 32).chr  # upcase first letter
+                        w
+                      end
+              h = words.join('-')
+              req_headers[h] = v
+              # puts 'HEADER: ' + h + ' = ' + v
+            end
           end
           req_headers["Content-Type"] = env["CONTENT_TYPE"] if env["CONTENT_TYPE"]
           req_headers["Content-Length"] = env["CONTENT_LENGTH"] if env["CONTENT_LENGTH"]
-          req_headers["X-Forwarded-For"] = %w(REMOTE_ADDR SERVER_ADDR).map{ |v| env[v] } \
-                                                                      .join(", ")
+          req_headers["X-Forwarded-For"] = env["REMOTE_ADDR"]
+          req_headers["X-Forwarded-Host"] = env["HTTP_HOST"]
 
           begin
             if env["REQUEST_METHOD"] == "POST"
@@ -46,7 +54,11 @@ module Rack
 
         return @app.call(env) unless result
         if result["location"]
-          return [result.code, { "Location" => result["location"] }, [result.body]]
+          res_headers = { "Location" => result["location"] }
+          # result.each_header do |h, v|
+          #   puts "#{h} = #{v}"
+          # end
+          return [result.code, res_headers, [result.body]]
         end
         if result.is_a?(Net::HTTPOK) && result["content-type"] =~ %r{^text/html}
           doc = Nokogiri::HTML(result.body)
@@ -59,7 +71,7 @@ module Rack
           env["app_proxy.cookies"] = result["set-cookie"]
         else
           res_headers = { "Content-Type" => result["content-type"] }
-          res_headers["Set-Cookie"] = result["Set-Cookie"] if result["set-cookie"]
+          res_headers["Set-Cookie"] = result["set-cookie"] if result["set-cookie"]
           return [result.code, res_headers, [result.body]]
         end
       end
@@ -70,7 +82,7 @@ module Rack
     private
     def expand_rel_paths(data, uri)
       @expand_paths.each do |p|
-        data.gsub!("./#{p}", "#{uri}/#{p}")
+        data.gsub!(%r{([^.])\./#{p}}, "\\1#{uri}/#{p}")
       end
       return data
     end
